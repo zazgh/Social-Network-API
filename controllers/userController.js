@@ -7,15 +7,15 @@ const { User, Thought } = require("../models");
 module.exports = {
   getUsers(req, res) {
     User.find()
-    .populate('thought')
-    .populate('friends')
-    .then(async (users) => {
-      const userObj = {
-        users,
-        userCount: users.length,
-      };
-      return res.json(userObj);
-    })
+      .populate("thought")
+      .populate("friends")
+      .then(async (users) => {
+        const userObj = {
+          users,
+          userCount: users.length,
+        };
+        return res.json(userObj);
+      })
       .catch((err) => {
         console.log(err);
         res.status(500).json({ msg: "error!", err });
@@ -24,16 +24,16 @@ module.exports = {
 
   getSingleUser(req, res) {
     User.findOne({ _id: req.params.userId })
-    .populate('thought')
-    .populate('friends')
-    .select('-__v')
-      .then((user) => 
+      .populate("thought")
+      .populate("friends")
+      .select("-__v")
+      .then((user) =>
         !user
-          ? res.status(404).json({ message: 'No user with that ID' })
+          ? res.status(404).json({ message: "No user with that ID" })
           : res.json(user)
-      )
-      
-      //.catch((err) => res.status(200).json(err));
+      );
+
+    //.catch((err) => res.status(200).json(err));
   },
 
   createUser(req, res) {
@@ -46,26 +46,41 @@ module.exports = {
   },
 
   deleteUser(req, res) {
-   User.findOneAndDelete({ _id: req.params.userId })
+    User.findOneAndDelete({ _id: req.params.userId })
       .then((user) => {
-        try{
-          if(!user) {
+        try {
+          if (!user) {
             res.status(404).json({ message: "No user with that ID" });
-  
-          }
-          else {
+          } else {
             Thought.deleteMany({ _id: { $in: user.thought } });
-            res.json({ message: "user and thought deleted!" })
-          }  
-        }catch(e){
-console.log("error" + e);
+            res.json({ message: "user and thought deleted!" });
+          }
+        } catch (e) {
+          console.log("error" + e);
         }
-        
-  })
+      })
       //.then(() => res.json({ message: "user and thought deleted!" }))
       .catch((err) => res.status(500).json(err));
   },
- 
+
+  deleteAllUsers(req, res) {
+    User.deleteMany()
+      .then((user) => {
+        try {
+          if (!user) {
+            res.status(404).json({ message: "No user with that ID" });
+          } else {
+            Thought.deleteMany();
+            res.json({ message: "users and thoughts deleted!" });
+          }
+        } catch (e) {
+          console.log("error" + e);
+        }
+      })
+      //.then(() => res.json({ message: "user and thought deleted!" }))
+      .catch((err) => res.status(500).json(err));
+  },
+
   updateUser(req, res) {
     User.findOneAndUpdate(
       { _id: req.params.userId },
@@ -81,7 +96,7 @@ console.log("error" + e);
   },
 
   createFriend(req, res) {
-    console.log (req.params.userId)
+    console.log("looking for " + req.params.userId);
     User.findOneAndUpdate(
       { _id: req.params.userId },
       { $addToSet: { friends: ObjectId(req.params.friendId) } },
@@ -90,8 +105,26 @@ console.log("error" + e);
       .then((user) =>
         !user
           ? res.status(404).json({ message: "No user with this id!" })
-          : res.json(user)
+          : user
       )
+      .then(() => {
+        console.log("looking for " + req.params.friendId);
+        User.findOneAndUpdate(
+          { _id: req.params.friendId },
+          { $addToSet: { friends: ObjectId(req.params.userId) } },
+          { runValidators: true, new: true }
+        )
+          .then((user) =>
+            !user
+              ? res
+                  .status(404)
+                  .json({
+                    message: `No second user with id ${req.params.friendId}`,
+                  })
+              : res.json(user)
+          )
+          .catch((err) => res.status(500).json(err));
+      })
       .catch((err) => res.status(500).json(err));
   },
   removeFriend(req, res) {

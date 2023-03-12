@@ -7,7 +7,7 @@ const thoughtCount = async () =>
     //.then((result) => result[0]. numberOfThought);
 
     Thought.aggregate([{ $count: 'numberOfThought' }])
-    .then((result) => result[0]. numberOfThought);
+    .then((result) => result[0] ? result[0].numberOfThought : 0);
 
 
 const singleThoughtCount = async (thoughtId) =>
@@ -50,8 +50,7 @@ module.exports = {
         !thought
           ? res.status(404).json({ message: "No thought with that ID" })
           : res.json({
-              thought,
-              reactionCount: await singleThoughtCount(thought._id),
+              thought
             })
       )
       .catch((err) => {
@@ -69,6 +68,10 @@ module.exports = {
         { $addToSet: { thought: thought._id } },
         { runValidators: true, new: true }
       ).then(_ => res.json(thought));
+    })
+    .catch((err) => {
+      console.log(err);
+      return res.status(500).json(err);
     });
     
     
@@ -92,6 +95,31 @@ module.exports = {
                     message: "thought deleted, but no user found",
                   })
                 : res.json({ message: "thought successfully deleted" })
+            )
+      )
+      
+      .catch((err) => {
+        console.log(err);
+        res.status(500).json(err);
+      });
+  },
+
+  deleteAllThoughts(req, res) {
+    Thought.deleteMany()
+      .then((thought) =>
+        !thought
+          ? res.status(404).json({ message: "No such Thought exists" })
+          : User.findOneAndUpdate(
+              { username: thought.username },
+              { $pull: { thought: req.params.thoughtId } },
+              { new: true }
+            )
+            .then((user) =>
+              !user
+                ? res.status(404).json({
+                    message: "thought deleted, but no user found",
+                  })
+                : res.json({ message: "thoughts successfully deleted" })
             )
       )
       
@@ -130,7 +158,7 @@ module.exports = {
           ? res
               .status(404)
               .json({ message: "No thought found with that ID :(" })
-          : res.json(thought)
+            : res.json({ message: "reaction successfully deleted" })
       )
       .catch((err) => res.status(500).json(err));
   },
